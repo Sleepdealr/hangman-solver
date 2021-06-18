@@ -4,9 +4,9 @@ use std::{
     fs::File,
     io::{self, BufRead, BufReader},
     path::Path,
+    time::Instant,
 };
-//TODO: Create regex generator to filter non-possible words
-//TODO: Fix output 
+//TODO: Fix output
 
 fn read_file(filename: impl AsRef<Path>) -> io::Result<Vec<String>> {
     BufReader::new(File::open(filename)?).lines().collect()
@@ -15,7 +15,7 @@ fn read_file(filename: impl AsRef<Path>) -> io::Result<Vec<String>> {
 fn get_most_common_letter(list: &mut Vec<String>, used_letters: &str) -> char {
     let mut letter_map: HashMap<char, u32> = HashMap::new();
     for word in list.into_iter() {
-        for (letter) in word.chars() {
+        for letter in word.chars() {
             // Gets index(unused) and letter of each word
             *letter_map.entry(letter).or_insert(1) += 1; // Adds letter to map if it doesn't exit
         }
@@ -31,21 +31,26 @@ fn get_most_common_letter(list: &mut Vec<String>, used_letters: &str) -> char {
     mcl
 }
 
-fn prune_vec(words: &mut Vec<String>, incorrect_letters: &str) {
-    if incorrect_letters.is_empty() {
-        return;
+fn prune_vec(words: &mut Vec<String>, incorrect_letters: &str, cur_guess: &str) {
+    let formatted;
+    let replaced = cur_guess.replace("_" , "[a-z]{1}");
+    let reg_replaced = Regex::new(&replaced).unwrap();
+    if !incorrect_letters.is_empty() {
+        formatted = format!("[{}]", incorrect_letters);
+        let incorrect = Regex::new(&formatted).unwrap();
+        words.retain(|x| !incorrect.is_match(x) && reg_replaced.is_match(x));
+        return
     }
-    let formatted = format!("/[{}]/", incorrect_letters);
-    let incorrect = Regex::new(&*formatted).unwrap();
-    for word in words {}
+    words.retain(|x| reg_replaced.is_match(x));
 }
 
 fn game(secret_word: String) {
+    let now = Instant::now();
     let (mut incorrect_letters, mut used_letters): (String, String) =
         (String::new(), String::new());
     let mut cur_guess: String = "_".repeat(secret_word.len());
-    let mut attempts: u8 = 0; //Attempts counter
-    let mut letter_guess: char = ' ';
+    let mut attempts: u8 = 1; //Attempts counter
+    let mut letter_guess: char;
     let mut words: Vec<String> =
         read_file("english-words/words_lowercase.txt").expect("Could not load lines"); // Loads all lines from file into words
     words.retain(|x| x.len() == secret_word.len()); // Prunes all words that aren't the correct length
@@ -55,6 +60,9 @@ fn game(secret_word: String) {
         letter_guess = get_most_common_letter(&mut words, &used_letters);
 
         let mut temp_cur_guess: String = String::new();
+        if !secret_word.contains(letter_guess) {
+            incorrect_letters.push(letter_guess);
+        }
         for (index, letter) in secret_word.chars().enumerate() {
             if letter.eq(&letter_guess) {
                 temp_cur_guess.push(letter);
@@ -67,26 +75,25 @@ fn game(secret_word: String) {
 
         cur_guess = temp_cur_guess;
         used_letters.push(letter_guess);
-        println!(
-            "Most common letter is:{}\nCurGuess:{}",
-            letter_guess, cur_guess
-        );
+
+        dbg!(&cur_guess);
+        dbg!(&letter_guess);
+
         if secret_word.eq(&cur_guess) {
             println!("it worky! {}", cur_guess);
             break;
         }
-        prune_vec(&mut words, &*incorrect_letters);
+
+        prune_vec(&mut words, &incorrect_letters, &cur_guess);
+        attempts += 1;
     }
-    println!(
-        "Most common letter: {}",
-        get_most_common_letter(&mut words, &used_letters)
-    );
-    println!("{:?}", words);
+    println!("This took {} milliseconds", now.elapsed().as_millis());
+    dbg!(&attempts);
 }
 
 fn main() {
     let mut secret_word = String::new();
-    println!("What word do you want it to guess?");
+    println!("enter a word it will guess");
     std::io::stdin().read_line(&mut secret_word).unwrap(); // Gets user input from stdin
     secret_word = secret_word.trim().to_string(); // Remove \n and other gunk from end of word
     game(secret_word);
