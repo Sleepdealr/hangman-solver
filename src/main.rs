@@ -33,13 +33,13 @@ fn get_most_common_letter(list: &mut Vec<String>, used_letters: &str) -> char {
 
 fn prune_vec(words: &mut Vec<String>, incorrect_letters: &str, cur_guess: &str) {
     let formatted;
-    let replaced = cur_guess.replace("_" , "[a-z]{1}");
+    let replaced = cur_guess.replace("_", "[a-z]{1}");
     let reg_replaced = Regex::new(&replaced).unwrap();
     if !incorrect_letters.is_empty() {
         formatted = format!("[{}]", incorrect_letters);
         let incorrect = Regex::new(&formatted).unwrap();
         words.retain(|x| !incorrect.is_match(x) && reg_replaced.is_match(x));
-        return
+        return;
     }
     words.retain(|x| reg_replaced.is_match(x));
 }
@@ -72,12 +72,11 @@ fn game(secret_word: String) {
                 temp_cur_guess.push('_');
             }
         }
-
         cur_guess = temp_cur_guess;
         used_letters.push(letter_guess);
 
-        dbg!(&cur_guess);
         dbg!(&letter_guess);
+        dbg!(&cur_guess);
 
         if secret_word.eq(&cur_guess) {
             println!("it worky! {}", cur_guess);
